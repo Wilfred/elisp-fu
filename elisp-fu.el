@@ -107,14 +107,26 @@
 	  (setq expr (read (current-buffer)))
           (list expr start-pos (point)))))))
 
-(defun elisp-fu-eval-preceding ()
-  "Evaluate the form before point, and flash the result."
-  (interactive)
-  (-let* (((form start-pos end-pos) (elisp-fu--preceding-sexp))
-          (result nil))
+(defun elisp-fu--enclosing-sexp ()
+  "Read the form enclosing point, along with its start and end positions."
+  (let (expr start-pos)
+    (save-excursion
+      ;; TODO: user-error if we're not inside a form, to avoid
+      ;; confusion.
+      (end-of-defun)
+      (beginning-of-defun)
+
+      (setq start-pos (point))
+      (setq expr (read (current-buffer)))
+
+      (list expr start-pos (point)))))
+
+(defun elisp-fu--eval (expr start-pos end-pos)
+  "Evaluate EXPR, flashing its position in the buffer."
+  (let* ((result nil))
     (condition-case e
         (progn
-          (setq result (eval form lexical-binding))
+          (setq result (eval expr lexical-binding))
           (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos)
           (message "result: %S" result))
       (error
@@ -122,14 +134,16 @@
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
        (error (cadr e))))))
 
+(defun elisp-fu-eval-preceding ()
+  "Evaluate the form before point, and flash the result."
+  (interactive)
+  (apply #'elisp-fu--eval (elisp-fu--preceding-sexp)))
+
 (defun elisp-fu-eval-top-level ()
   "Evaluate the top-level form containing point, and flash the result."
+  ;; TODO: integrate with edebug.
   (interactive)
-  (-let* (((form . start-pos) (elisp--preceding-sexp))
-          (result (eval form lexical-binding)))
-    (elisp-fu--flash-region start-pos (point))
-    (message "result: %S" result))
-  )
+  (apply #'elisp-fu--eval (elisp-fu--enclosing-sexp)))
 
 (provide 'elisp-fu)
 ;;; elisp-fu.el ends here
