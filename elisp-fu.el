@@ -222,10 +222,33 @@ This function takes some optional keyword arguments:
                               (window-width win))
                            (not truncate-lines)))
               o)))))))
+;; TODO: Use `form' consistently, removing `expr'.
+(defun elisp-fu--unbind (form)
+  "If FORM is a `defvar', `defcustom' or `defface' form, unbind it.
+This resets those variables to their default values when we
+evaluate FORM."
+  ;; Based on `edebug-eval-defun'.
+  (cond
+   ((and (eq (car-safe form) 'defvar)
+         (cdr-safe (cdr-safe form)))
+    ;; Unbind variable.
+    (makunbound (nth 1 form)))
+   ((and (eq (car-safe form) 'defcustom)
+         (default-boundp (nth 1 form)))
+    ;; Set default value of this custom variable.
+    ;; FIXME: Shouldn't this use the :setter or :initializer?
+    (set-default (nth 1 form) (eval (nth 2 form) lexical-binding)))
+   ((eq (car-safe form) 'defface)
+    ;; Reset the face.
+    (setq face-new-frame-defaults
+          (assq-delete-all (nth 1 form) face-new-frame-defaults))
+    (put (nth 1 form) 'face-defface-spec nil)
+    (put (nth 1 form) 'face-documentation (nth 3 form)))))
 
 (defun elisp-fu--eval (expr start-pos end-pos)
   "Evaluate EXPR, flashing its position in the buffer."
   (let* (result formatted-result)
+    (elisp-fu--unbind expr)
     (condition-case e
         (progn
           (setq result (eval expr lexical-binding))
@@ -244,12 +267,18 @@ This function takes some optional keyword arguments:
        (error (cadr e))))))
 
 (defun elisp-fu-eval-preceding ()
-  "Evaluate the form before point, and flash the result."
+  "Evaluate the form before point, and flash the result.
+
+If the form is a `defvar', `defcustom' or a `defface', reset the
+variable to its default value."
   (interactive)
   (apply #'elisp-fu--eval (elisp-fu--preceding-sexp)))
 
 (defun elisp-fu-eval-top-level ()
-  "Evaluate the top-level form containing point, and flash the result."
+  "Evaluate the top-level form containing point, and flash the result.
+
+If the form is a `defvar', `defcustom' or a `defface', reset the
+variable to its default value."
   ;; TODO: integrate with edebug.
   (interactive)
   (apply #'elisp-fu--eval (elisp-fu--enclosing-sexp)))
