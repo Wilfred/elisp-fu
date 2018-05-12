@@ -31,6 +31,7 @@
 ;; `magit-diff-removed-highlight'. We don't want to just use the
 ;; `highlight' face for success, as that can be red in some themes.
 
+;; TODO: Use blue instead, in case users are red/green colourblind.
 (defface elisp-fu-success
   '((((class color) (background light))
      :background "#cceecc"
@@ -257,12 +258,15 @@ evaluate FORM."
           ;; TODO: use conventional Emacs integer formatting
           ;; TODO: truncate long string
           (setq formatted-result (pp-to-string result))
+          ;; TODO: If the form isn't fully on screen (e.g. large
+          ;; functions), ensure the overlay is at the bottom of the
+          ;; window.
           (eros--make-result-overlay (format " => %s" formatted-result)
             :where (point)
             :duration 'command)
           (message "%s" formatted-result))
       (error
-       ;; Flash an error, then propagate the signal.
+       ;; Flash the form in red, then propagate the signal.
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
        (error (cadr e))))))
 
