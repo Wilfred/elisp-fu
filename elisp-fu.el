@@ -152,7 +152,7 @@ This function also removes itself from `pre-command-hook'."
   (remove-hook 'pre-command-hook #'eros--remove-result-overlay 'local)
   (remove-overlays nil nil 'category 'result))
 
-(cl-defun elisp-fu--make-result-overlay (value &rest props &key where (type 'result)
+(cl-defun elisp-fu--make-result-overlay (value where &rest props &key
                                                (prepend-face 'eros-result-overlay-face))
   "Place an overlay displaying string VALUE at the end of the line.
 
@@ -189,7 +189,7 @@ This function takes some optional keyword arguments:
                   (line-end-position)))
            (display-string value)
            (o nil))
-      (remove-overlays beg end 'category type)
+      (remove-overlays beg end 'category 'result)
       ;; If the display spans multiple lines or is very long, display it at
       ;; the beginning of the next line.
       (when (or (string-match "\n." display-string)
@@ -205,7 +205,7 @@ This function takes some optional keyword arguments:
                       "...\nResult truncated.")))
       ;; Create the result overlay.
       (setq o (apply #'eros--make-overlay
-                     beg end type
+                     beg end
                      'after-string display-string
                      props))
       (if this-command
@@ -264,9 +264,7 @@ evaluate FORM."
           ;; TODO: If the form isn't fully on screen (e.g. large
           ;; functions), ensure the overlay is at the bottom of the
           ;; window.
-          (elisp-fu--make-result-overlay
-           (format " => %s" formatted-result)
-           :where end-pos)
+          (elisp-fu--make-result-overlay (format " => %s" formatted-result) end-pos)
           (message "%s" formatted-result))
       (error
        ;; Flash the form in red, then propagate the signal.
