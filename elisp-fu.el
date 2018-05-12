@@ -169,60 +169,58 @@ This function takes some optional keyword arguments:
   overlay.
 
 - TYPE is passed to `eros--make-overlay' (defaults to `result')."
-  (declare (indent 1))
   (while (keywordp (car props))
     (setq props (cddr props)))
-  (let ((buffer (current-buffer)))
-    (with-current-buffer buffer
-      (save-excursion
-        ;; Make sure the overlay is actually at the end of the sexp.
-        (skip-chars-backward "\r\n[:blank:]")
-        (let* ((beg (if (consp where)
-                        (car where)
-                      (save-excursion
-                        (backward-sexp 1)
-                        (point))))
-               (end (if (consp where)
-                        (cdr where)
-                      (line-end-position)))
-               (display-string value)
-               (o nil))
-          (remove-overlays beg end 'category type)
-          ;; If the display spans multiple lines or is very long, display it at
-          ;; the beginning of the next line.
-          (when (or (string-match "\n." display-string)
-                    (> (string-width display-string)
-                       (- (window-width) (current-column))))
-            (setq display-string (concat " \n" display-string)))
-          ;; Put the cursor property only once we're done manipulating the
-          ;; string, since we want it to be at the first char.
-          (put-text-property 0 1 'cursor 0 display-string)
-          (when (> (string-width display-string) (* 3 (window-width)))
-            (setq display-string
-                  (concat (substring display-string 0 (* 3 (window-width)))
-                          "...\nResult truncated.")))
-          ;; Create the result overlay.
-          (setq o (apply #'eros--make-overlay
-                         beg end type
-                         'after-string display-string
-                         props))
-          (if this-command
-              (add-hook 'pre-command-hook
-                        #'eros--remove-result-overlay
-                        nil 'local)
-            (eros--remove-result-overlay))
-          (let ((win (get-buffer-window buffer)))
-            ;; Left edge is visible.
-            (when (and win
-                       (<= (window-start win) (point))
-                       ;; In 24.3 `<=' is still a binary predicate.
-                       (<= (point) (window-end win))
-                       ;; Right edge is visible. This is a little conservative
-                       ;; if the overlay contains line breaks.
-                       (or (< (+ (current-column) (string-width value))
-                              (window-width win))
-                           (not truncate-lines)))
-              o)))))))
+  (save-excursion
+    ;; Make sure the overlay is actually at the end of the sexp.
+    (skip-chars-backward "\r\n[:blank:]")
+    (let* ((beg (if (consp where)
+                    (car where)
+                  (save-excursion
+                    (backward-sexp 1)
+                    (point))))
+           (end (if (consp where)
+                    (cdr where)
+                  (line-end-position)))
+           (display-string value)
+           (o nil))
+      (remove-overlays beg end 'category type)
+      ;; If the display spans multiple lines or is very long, display it at
+      ;; the beginning of the next line.
+      (when (or (string-match "\n." display-string)
+                (> (string-width display-string)
+                   (- (window-width) (current-column))))
+        (setq display-string (concat " \n" display-string)))
+      ;; Put the cursor property only once we're done manipulating the
+      ;; string, since we want it to be at the first char.
+      (put-text-property 0 1 'cursor 0 display-string)
+      (when (> (string-width display-string) (* 3 (window-width)))
+        (setq display-string
+              (concat (substring display-string 0 (* 3 (window-width)))
+                      "...\nResult truncated.")))
+      ;; Create the result overlay.
+      (setq o (apply #'eros--make-overlay
+                     beg end type
+                     'after-string display-string
+                     props))
+      (if this-command
+          (add-hook 'pre-command-hook
+                    #'eros--remove-result-overlay
+                    nil 'local)
+        (eros--remove-result-overlay))
+      (let ((win (get-buffer-window (current-buffer))))
+        ;; Left edge is visible.
+        (when (and win
+                   (<= (window-start win) (point))
+                   ;; In 24.3 `<=' is still a binary predicate.
+                   (<= (point) (window-end win))
+                   ;; Right edge is visible. This is a little conservative
+                   ;; if the overlay contains line breaks.
+                   (or (< (+ (current-column) (string-width value))
+                          (window-width win))
+                       (not truncate-lines)))
+          o)))))
+
 ;; TODO: Use `form' consistently, removing `expr'.
 (defun elisp-fu--unbind (form)
   "If FORM is a `defvar', `defcustom' or `defface' form, unbind it.
@@ -262,7 +260,7 @@ evaluate FORM."
           ;; functions), ensure the overlay is at the bottom of the
           ;; window.
           (eros--make-result-overlay (format " => %s" formatted-result)
-            :where (point)
+            :where end-pos
             :duration 'command)
           (message "%s" formatted-result))
       (error
