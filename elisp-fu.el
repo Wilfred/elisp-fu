@@ -152,7 +152,7 @@ This function also removes itself from `pre-command-hook'."
   (remove-hook 'pre-command-hook #'eros--remove-result-overlay 'local)
   (remove-overlays nil nil 'category 'result))
 
-(cl-defun elisp-fu--make-result-overlay (value &rest props &key where duration (type 'result)
+(cl-defun elisp-fu--make-result-overlay (value &rest props &key where (type 'result)
                                                (prepend-face 'eros-result-overlay-face))
   "Place an overlay displaying string VALUE at the end of the line.
 
@@ -266,8 +266,7 @@ evaluate FORM."
           ;; window.
           (elisp-fu--make-result-overlay
            (format " => %s" formatted-result)
-           :where end-pos
-           :duration 'command)
+           :where end-pos)
           (message "%s" formatted-result))
       (error
        ;; Flash the form in red, then propagate the signal.
