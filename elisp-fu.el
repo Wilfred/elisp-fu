@@ -122,38 +122,36 @@
 
       (list expr start-pos (point)))))
 
-(defun eros--make-overlay (l r type &rest props)
+(defun elisp-fu--make-overlay (l r &rest props)
   "Place an overlay between L and R and return it.
 
 TYPE is a symbol put on the overlay's category property.  It is
 used to easily remove all overlays from a region with:
 
-    (remove-overlays start end 'category TYPE)
+    (remove-overlays start end 'category 'result)
 
 PROPS is a plist of properties and values to add to the overlay."
   (let ((o (make-overlay l (or r l) (current-buffer))))
-    (overlay-put o 'category type)
-    (overlay-put o 'eros-temporary t)
+    (overlay-put o 'category 'result)
     (while props (overlay-put o (pop props) (pop props)))
-    (push #'eros--delete-overlay (overlay-get o 'modification-hooks))
+    (push #'elisp-fu--delete-overlay (overlay-get o 'modification-hooks))
     o))
 
-(defun eros--delete-overlay (ov &rest _)
+(defun elisp-fu--delete-overlay (ov &rest _)
   "Safely delete overlay OV.
 
 Never throws errors, and can be used in an overlay's
 modification-hooks."
   (ignore-errors (delete-overlay ov)))
 
-(defun eros--remove-result-overlay ()
+(defun elisp-fu--remove-result-overlay ()
   "Remove result overlay from current buffer.
 
 This function also removes itself from `pre-command-hook'."
-  (remove-hook 'pre-command-hook #'eros--remove-result-overlay 'local)
+  (remove-hook 'pre-command-hook #'elisp-fu--remove-result-overlay 'local)
   (remove-overlays nil nil 'category 'result))
 
-(cl-defun elisp-fu--make-result-overlay (value where &rest props &key
-                                               (prepend-face 'eros-result-overlay-face))
+(defun elisp-fu--make-result-overlay (value where)
   "Place an overlay displaying string VALUE at the end of the line.
 
 VALUE is used as the overlay's after-string property, meaning it
@@ -164,18 +162,7 @@ Return nil if the overlay was not placed or if it might not be
 visible, and return the overlay otherwise.
 
 Return the overlay if it was placed successfully, and nil if it
-failed.
-
-This function takes some optional keyword arguments:
-
-- If WHERE is a number or a marker, apply the overlay over the
-  entire line at that place (defaulting to `point').  If it is a
-  cons cell, the car and cdr determine the start and end of the
-  overlay.
-
-- TYPE is passed to `eros--make-overlay' (defaults to `result')."
-  (while (keywordp (car props))
-    (setq props (cddr props)))
+failed."
   (save-excursion
     ;; Make sure the overlay is actually at the end of the sexp.
     (skip-chars-backward "\r\n[:blank:]")
@@ -204,15 +191,15 @@ This function takes some optional keyword arguments:
               (concat (substring display-string 0 (* 3 (window-width)))
                       "...\nResult truncated.")))
       ;; Create the result overlay.
-      (setq o (apply #'eros--make-overlay
+      (setq o (apply #'elisp-fu--make-overlay
                      beg end
                      'after-string display-string
-                     props))
+                     nil))
       (if this-command
           (add-hook 'pre-command-hook
-                    #'eros--remove-result-overlay
+                    #'elisp-fu--remove-result-overlay
                     nil 'local)
-        (eros--remove-result-overlay))
+        (elisp-fu--remove-result-overlay))
       (let ((win (get-buffer-window (current-buffer))))
         ;; Left edge is visible.
         (when (and win
