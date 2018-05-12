@@ -145,10 +145,15 @@ Never throws errors, and can be used in an overlay's
 modification-hooks."
   (ignore-errors (delete-overlay ov)))
 
-(cl-defun eros--make-result-overlay (value &rest props &key where duration (type 'result)
-                                           (format (concat " " eros-eval-result-prefix "%s "))
-                                           (prepend-face 'eros-result-overlay-face)
-                                           &allow-other-keys)
+(defun eros--remove-result-overlay ()
+  "Remove result overlay from current buffer.
+
+This function also removes itself from `pre-command-hook'."
+  (remove-hook 'pre-command-hook #'eros--remove-result-overlay 'local)
+  (remove-overlays nil nil 'category 'result))
+
+(cl-defun elisp-fu--make-result-overlay (value &rest props &key where duration (type 'result)
+                                               (prepend-face 'eros-result-overlay-face))
   "Place an overlay displaying string VALUE at the end of the line.
 
 VALUE is used as the overlay's after-string property, meaning it
@@ -259,9 +264,10 @@ evaluate FORM."
           ;; TODO: If the form isn't fully on screen (e.g. large
           ;; functions), ensure the overlay is at the bottom of the
           ;; window.
-          (eros--make-result-overlay (format " => %s" formatted-result)
-            :where end-pos
-            :duration 'command)
+          (elisp-fu--make-result-overlay
+           (format " => %s" formatted-result)
+           :where end-pos
+           :duration 'command)
           (message "%s" formatted-result))
       (error
        ;; Flash the form in red, then propagate the signal.
