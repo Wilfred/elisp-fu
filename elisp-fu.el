@@ -138,9 +138,12 @@
 	  (setq expr (read (current-buffer)))
           (list expr start-pos (point)))))))
 
-(defun elisp-fu--enclosing-sexp ()
-  "Read the form enclosing point, along with its start and end positions."
-  (let (expr start-pos)
+(defun elisp-fu--enclosing-sexp (edebug-p)
+  "Read the form enclosing point, along with its start and end positions.
+If EDEBUG-P is non-nil, return the edebug-enabled version of the form."
+  (let ((edebug-all-forms edebug-p)
+        (edebug-all-defs edebug-p)
+        expr start-pos)
     (save-excursion
       ;; TODO: user-error if we're not inside a form, to avoid
       ;; confusion.
@@ -148,7 +151,13 @@
       (beginning-of-defun)
 
       (setq start-pos (point))
-      (setq expr (read (current-buffer)))
+      ;; Use `edebug-read-top-level-form' to read the form with edebug
+      ;; expressions inserted.
+      (setq expr (edebug-read-top-level-form))
+
+      ;; `edebug-read-top-level-form' doesn't move point, so use
+      ;; `read' to step over the form so we can find its end position.
+      (read (current-buffer))
 
       (list expr start-pos (point)))))
 
@@ -266,7 +275,7 @@ evaluate FORM."
     (put (nth 1 form) 'face-defface-spec nil)
     (put (nth 1 form) 'face-documentation (nth 3 form)))))
 
-(defun elisp-fu--eval (expr start-pos end-pos)
+(defun elisp-fu--eval (expr start-pos end-pos &optional edebug-p)
   "Evaluate EXPR, flashing its position in the buffer."
   
   (let* (hist-item result formatted-result)
@@ -297,7 +306,11 @@ evaluate FORM."
           ;; functions), ensure the overlay is at the bottom of the
           ;; window.
           (elisp-fu--make-result-overlay (format " => %s" formatted-result) end-pos)
-          (message "%s" formatted-result))
+
+          (message
+           (if edebug-p
+               (format "%s (edebug enabled)" formatted-result)
+             (format "%s" formatted-result))))
       (error
        ;; Flash the form in red, then propagate the signal.
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
@@ -311,14 +324,16 @@ variable to its default value."
   (interactive)
   (apply #'elisp-fu--eval (elisp-fu--preceding-sexp)))
 
-(defun elisp-fu-eval-top-level ()
+(defun elisp-fu-eval-top-level (edebug-p)
   "Evaluate the top-level form containing point, and flash the result.
+
+If called with a prefix, enable edebug on the form at point.
 
 If the form is a `defvar', `defcustom' or a `defface', reset the
 variable to its default value."
-  ;; TODO: integrate with edebug.
-  (interactive)
-  (apply #'elisp-fu--eval (elisp-fu--enclosing-sexp)))
+  (interactive "P")
+  (apply #'elisp-fu--eval (append (elisp-fu--enclosing-sexp edebug-p)
+                                  (list edebug-p))))
 
 (provide 'elisp-fu)
 ;;; elisp-fu.el ends here
