@@ -288,33 +288,36 @@ evaluate FORM."
     (push hist-item elisp-fu--history)
     (setq elisp-fu--history
           (-take elisp-fu-history-size elisp-fu--history))
-    
+
     (elisp-fu--unbind expr)
     (condition-case e
         (progn
           (setq result (eval expr lexical-binding))
           (setf (elisp-fu-history-item-result hist-item) result)
-          (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos)
-
-          ;; TODO: use conventional Emacs integer formatting
-          ;; TODO: truncate long string
-          (setq formatted-result (pp-to-string result))
-          (setf (elisp-fu-history-item-formatted-result hist-item)
-                formatted-result)
-          
-          ;; TODO: If the form isn't fully on screen (e.g. large
-          ;; functions), ensure the overlay is at the bottom of the
-          ;; window.
-          (elisp-fu--make-result-overlay (format " => %s" formatted-result) end-pos)
-
-          (message
-           (if edebug-p
-               (format "%s (edebug enabled)" formatted-result)
-             (format "%s" formatted-result))))
+          (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos))
       (error
        ;; Flash the form in red, then propagate the signal.
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
-       (error (cadr e))))))
+
+       (setf (elisp-fu-history-item-errored-p hist-item) t)
+
+       (error (cadr e))))
+
+    ;; TODO: use conventional Emacs integer formatting
+    ;; TODO: truncate long string
+    (setq formatted-result (s-trim-right (pp-to-string result)))
+    (setf (elisp-fu-history-item-formatted-result hist-item)
+          formatted-result)
+
+    ;; TODO: If the form isn't fully on screen (e.g. large
+    ;; functions), ensure the overlay is at the bottom of the
+    ;; window.
+    (elisp-fu--make-result-overlay (format " => %s" formatted-result) end-pos)
+
+    (message
+     (if edebug-p
+         (format "%s (edebug enabled)" formatted-result)
+       (format "%s" formatted-result)))))
 
 (defun elisp-fu-eval-preceding ()
   "Evaluate the form before point, and flash the result.
