@@ -57,6 +57,8 @@
   result formatted-result
   )
 
+(defvar elisp-fu-history-size 5)
+
 (defvar elisp-fu--history nil)
 
 (defun elisp-fu--buffer ()
@@ -275,6 +277,8 @@ evaluate FORM."
            :end-pos end-pos
            :source (buffer-substring start-pos end-pos)))
     (push hist-item elisp-fu--history)
+    (setq elisp-fu--history
+          (-take elisp-fu-history-size elisp-fu--history))
     
     (elisp-fu--unbind expr)
     (condition-case e
