@@ -52,6 +52,34 @@
   "Face for overlay when evaluating a form produces an error."
   :group 'elisp-fu)
 
+(cl-defstruct elisp-fu-history-item
+  buffer start-pos end-pos source errored-p
+  result formatted-result
+  )
+
+(defvar elisp-fu--history nil)
+
+(defun elisp-fu--buffer ()
+  (interactive)
+  (let ((buf (get-buffer-create "*elisp-fu-results*")))
+    (switch-to-buffer buf)
+    (setq buffer-read-only t)
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (dolist (item (reverse elisp-fu--history))
+        ;; TODO: get fields and insert.
+        (insert
+         (propertize
+          (concat
+           "elisp-fu> "
+           (elisp-fu-history-item-source item))
+          'face 'font-lock-comment-face)
+         "\n"
+         (-if-let ((formatted-result (elisp-fu-history-item-formatted-result item)))
+             formatted-result
+           (format "%S" (elisp-fu-history-item-result item)))
+         "\n\n")))))
+
 (defun elisp-fu--flash-region (face start end)
   "Temporarily highlight region from START to END."
   (let ((overlay (make-overlay start end)))
@@ -238,16 +266,29 @@ evaluate FORM."
 
 (defun elisp-fu--eval (expr start-pos end-pos)
   "Evaluate EXPR, flashing its position in the buffer."
-  (let* (result formatted-result)
+  
+  (let* (hist-item result formatted-result)
+    (setq hist-item
+          (make-elisp-fu-history-item
+           :buffer (current-buffer)
+           :start-pos start-pos
+           :end-pos end-pos
+           :source (buffer-substring start-pos end-pos)))
+    (push hist-item elisp-fu--history)
+    
     (elisp-fu--unbind expr)
     (condition-case e
         (progn
           (setq result (eval expr lexical-binding))
+          (setf (elisp-fu-history-item-result hist-item) result)
           (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos)
 
           ;; TODO: use conventional Emacs integer formatting
           ;; TODO: truncate long string
           (setq formatted-result (pp-to-string result))
+          (setf (elisp-fu-history-item-formatted-result hist-item)
+                formatted-result)
+          
           ;; TODO: If the form isn't fully on screen (e.g. large
           ;; functions), ensure the overlay is at the bottom of the
           ;; window.
