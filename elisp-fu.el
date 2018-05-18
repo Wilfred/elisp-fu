@@ -86,13 +86,13 @@
         (let* ((source (elisp-fu-history-item-source item))
                (result (elisp-fu-history-item-result item))
                (formatted-result
-                (or
-                 ;; Only apply font-lock if we managed to pretty-print
-                 ;; the result. If it was very big and we failed to
-                 ;; pretty-print it, font lock will be slow too.
-                 (elisp-fu--syntax-highlight
-                  (elisp-fu-history-item-formatted-result item))
-                 (format "%S" result))))
+                (elisp-fu-history-item-formatted-result item)))
+          (if formatted-result
+              ;; Only apply font-lock if we managed to pretty-print
+              ;; the result. If it was very big and we failed to
+              ;; pretty-print it, font lock will be slow too.
+              (setq formatted-result (elisp-fu--syntax-highlight formatted-result))
+            (setq formatted-result (format "%S" result)))
           (insert
            (propertize
             (concat "elisp-fu> " source)
