@@ -163,9 +163,13 @@ If EDEBUG-P is non-nil, return the edebug-enabled version of the form."
   (let ((edebug-all-forms edebug-p)
         (edebug-all-defs edebug-p)
         expr start-pos)
+    (let* ((ppss (syntax-ppss))
+           (in-list-p (nth 1 ppss))
+           (in-string-p (nth 3 ppss)))
+      (unless (or in-list-p in-string-p)
+        (user-error "Point is not inside an s-expression")))
+
     (save-excursion
-      ;; TODO: user-error if we're not inside a form, to avoid
-      ;; confusion.
       (end-of-defun)
       (beginning-of-defun)
 
