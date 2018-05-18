@@ -61,6 +61,20 @@
 
 (defvar elisp-fu--history nil)
 
+(defun elisp-fu--syntax-highlight (source)
+  "Return a propertized version of SOURCE."
+  (with-temp-buffer
+    (insert source)
+
+    ;; Switch to the major-mode, but don't run any hooks.
+    (delay-mode-hooks (emacs-lisp-mode))
+
+    (if (fboundp 'font-lock-ensure)
+        (font-lock-ensure)
+      (with-no-warnings
+        (font-lock-fontify-buffer)))
+    (buffer-string)))
+
 (defun elisp-fu--buffer ()
   (interactive)
   (let ((buf (get-buffer-create "*elisp-fu-results*")))
@@ -69,18 +83,23 @@
     (let ((inhibit-read-only t))
       (erase-buffer)
       (dolist (item (reverse elisp-fu--history))
-        ;; TODO: get fields and insert.
-        (insert
-         (propertize
-          (concat
-           "elisp-fu> "
-           (elisp-fu-history-item-source item))
-          'face 'font-lock-comment-face)
-         "\n"
-         (-if-let ((formatted-result (elisp-fu-history-item-formatted-result item)))
-             formatted-result
-           (format "%S" (elisp-fu-history-item-result item)))
-         "\n\n")))))
+        (let* ((source (elisp-fu-history-item-source item))
+               (result (elisp-fu-history-item-result item))
+               (formatted-result
+                (or
+                 ;; Only apply font-lock if we managed to pretty-print
+                 ;; the result. If it was very big and we failed to
+                 ;; pretty-print it, font lock will be slow too.
+                 (elisp-fu--syntax-highlight
+                  (elisp-fu-history-item-formatted-result item))
+                 (format "%S" result))))
+          (insert
+           (propertize
+            (concat "elisp-fu> " source)
+            'face 'font-lock-comment-face)
+           "\n"
+           formatted-result
+           "\n\n"))))))
 
 (defun elisp-fu--flash-region (face start end)
   "Temporarily highlight region from START to END."
