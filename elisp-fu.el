@@ -77,34 +77,37 @@
         (font-lock-fontify-buffer)))
     (buffer-string)))
 
-(defun elisp-fu--buffer ()
-  (interactive)
+(defun elisp-fu--update-results-buffer ()
   (let ((buf (get-buffer-create "*elisp-fu-results*")))
-    (switch-to-buffer buf)
-    (setq buffer-read-only t)
-    (let ((inhibit-read-only t))
-      (erase-buffer)
-      (dolist (item (reverse elisp-fu--history))
-        (let* ((source (elisp-fu-history-item-source item))
-               (result (elisp-fu-history-item-result item))
-               (formatted-result
-                (elisp-fu-history-item-formatted-result item))
-               (error-msg (elisp-fu-history-item-error-msg item)))
-          (if formatted-result
-              ;; Only apply font-lock if we managed to pretty-print
-              ;; the result. If it was very big and we failed to
-              ;; pretty-print it, font lock will be slow too.
-              (setq formatted-result (elisp-fu--syntax-highlight formatted-result))
-            (setq formatted-result (format "%S" result)))
-          (insert
-           (propertize
-            (concat "elisp-fu> " source)
-            'face 'font-lock-comment-face)
-           "\n"
-           (if error-msg
-               (propertize error-msg 'face 'font-lock-warning-face)
-             formatted-result)
-           "\n\n"))))))
+    (with-current-buffer buf
+      (setq buffer-read-only t)
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (dolist (item (reverse elisp-fu--history))
+          (unless (equal (point-min) (point-max))
+            (insert "\n\n"))
+          
+          (let* ((source (elisp-fu-history-item-source item))
+                 (result (elisp-fu-history-item-result item))
+                 (formatted-result
+                  (elisp-fu-history-item-formatted-result item))
+                 (error-msg (elisp-fu-history-item-error-msg item)))
+            (if formatted-result
+                ;; Only apply font-lock if we managed to pretty-print
+                ;; the result. If it was very big and we failed to
+                ;; pretty-print it, font lock will be slow too.
+                (setq formatted-result (elisp-fu--syntax-highlight formatted-result))
+              (setq formatted-result (format "%S" result)))
+            (insert
+             (propertize
+              (concat "elisp-fu> " source)
+              'face 'font-lock-comment-face)
+             "\n"
+             (if error-msg
+                 (propertize error-msg 'face 'font-lock-warning-face)
+               formatted-result))))
+        ;; TODO: preserve previous point position?
+        (goto-char (point-max))))))
 
 (defun elisp-fu--flash-region (face start end)
   "Temporarily highlight region from START to END."
@@ -328,6 +331,7 @@ evaluate FORM."
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
 
        (setf (elisp-fu-history-item-error-msg hist-item) (cadr e))
+       (elisp-fu--update-results-buffer)
 
        (error (cadr e))))
 
@@ -336,6 +340,7 @@ evaluate FORM."
     (setq formatted-result (s-trim-right (pp-to-string result)))
     (setf (elisp-fu-history-item-formatted-result hist-item)
           formatted-result)
+    (elisp-fu--update-results-buffer)
 
     ;; TODO: If the form isn't fully on screen (e.g. large
     ;; functions), ensure the overlay is at the bottom of the
