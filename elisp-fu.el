@@ -78,9 +78,13 @@
     (buffer-string)))
 
 (defun elisp-fu--update-results-buffer ()
-  (let ((buf (get-buffer-create "*elisp-fu-results*")))
+  (let* ((buf-name "*elisp-fu-results*")
+         (created-buf (not (get-buffer buf-name)))
+         (buf (get-buffer-create buf-name)))
     (with-current-buffer buf
-      (setq buffer-read-only t)
+      (when created-buf
+        (special-mode)
+        (setq buffer-read-only t))
       (let ((inhibit-read-only t))
         (erase-buffer)
         (dolist (item (reverse elisp-fu--history))
