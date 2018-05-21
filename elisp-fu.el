@@ -52,8 +52,10 @@
   "Face for overlay when evaluating a form produces an error."
   :group 'elisp-fu)
 
+;; TODO: rename to elisp-fu-result
 (cl-defstruct elisp-fu-history-item
-  buffer start-pos end-pos source errored-p
+  buffer start-pos end-pos source
+  error-msg backtrace
   result formatted-result
   )
 
@@ -86,7 +88,8 @@
         (let* ((source (elisp-fu-history-item-source item))
                (result (elisp-fu-history-item-result item))
                (formatted-result
-                (elisp-fu-history-item-formatted-result item)))
+                (elisp-fu-history-item-formatted-result item))
+               (error-msg (elisp-fu-history-item-error-msg item)))
           (if formatted-result
               ;; Only apply font-lock if we managed to pretty-print
               ;; the result. If it was very big and we failed to
@@ -98,7 +101,9 @@
             (concat "elisp-fu> " source)
             'face 'font-lock-comment-face)
            "\n"
-           formatted-result
+           (if error-msg
+               (propertize error-msg 'face 'font-lock-warning-face)
+             formatted-result)
            "\n\n"))))))
 
 (defun elisp-fu--flash-region (face start end)
@@ -322,7 +327,7 @@ evaluate FORM."
        ;; Flash the form in red, then propagate the signal.
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
 
-       (setf (elisp-fu-history-item-errored-p hist-item) t)
+       (setf (elisp-fu-history-item-error-msg hist-item) (cadr e))
 
        (error (cadr e))))
 
