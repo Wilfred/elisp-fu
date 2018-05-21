@@ -5,6 +5,7 @@
 ;; Author: Wilfred Hughes <me@wilfred.me.uk>
 ;; Keywords: lisp
 ;; Version: 1.0
+;; Package-Requires: ((dash "2.12.0") (s "1.11.0"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -25,7 +26,9 @@
 
 ;;; Code:
 
+(require 'edebug)
 (require 'dash)
+(require 's)
 
 ;; Based on `magit-diff-added-highlight' and
 ;; `magit-diff-removed-highlight'. We don't want to just use the
