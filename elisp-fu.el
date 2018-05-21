@@ -306,6 +306,8 @@ evaluate FORM."
     (put (nth 1 form) 'face-defface-spec nil)
     (put (nth 1 form) 'face-documentation (nth 3 form)))))
 
+;; TODO: benchmark handling of large strings, large lists
+;; (e.g. auto-mode-alist), and obarrays.
 (defun elisp-fu--eval (expr start-pos end-pos &optional edebug-p)
   "Evaluate EXPR, flashing its position in the buffer."
   
