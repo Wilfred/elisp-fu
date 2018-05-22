@@ -123,12 +123,12 @@
     (run-with-timer 0.5 nil 'delete-overlay overlay)))
 
 (defun elisp-fu--preceding-sexp ()
-  "Return sexp before the point, with its start and finish position."
+  "Return the form before point, with its start and finish position."
   ;; Based on `elisp--preceding-sexp', but includes position
   ;; information.
   (let ((opoint (point))
 	(left-quote ?‘)
-	expr start-pos)
+	form start-pos)
     (save-excursion
       (with-syntax-table emacs-lisp-mode-syntax-table
 	;; If this sexp appears to be enclosed in `...' or ‘...’
@@ -169,15 +169,15 @@
 	  (narrow-to-region (point-min) opoint)
 
           (setq start-pos (point))
-	  (setq expr (read (current-buffer)))
-          (list expr start-pos (point)))))))
+	  (setq form (read (current-buffer)))
+          (list form start-pos (point)))))))
 
 (defun elisp-fu--enclosing-sexp (edebug-p)
   "Read the form enclosing point, along with its start and end positions.
 If EDEBUG-P is non-nil, return the edebug-enabled version of the form."
   (let ((edebug-all-forms edebug-p)
         (edebug-all-defs edebug-p)
-        expr start-pos)
+        form start-pos)
     (let* ((ppss (syntax-ppss))
            (in-list-p (nth 1 ppss))
            (in-string-p (nth 3 ppss)))
@@ -191,13 +191,13 @@ If EDEBUG-P is non-nil, return the edebug-enabled version of the form."
       (setq start-pos (point))
       ;; Use `edebug-read-top-level-form' to read the form with edebug
       ;; expressions inserted.
-      (setq expr (edebug-read-top-level-form))
+      (setq form (edebug-read-top-level-form))
 
       ;; `edebug-read-top-level-form' doesn't move point, so use
       ;; `read' to step over the form so we can find its end position.
       (read (current-buffer))
 
-      (list expr start-pos (point)))))
+      (list form start-pos (point)))))
 
 (defun elisp-fu--make-overlay (l r &rest props)
   "Place an overlay between L and R and return it.
@@ -290,9 +290,8 @@ failed."
                        (not truncate-lines)))
           o)))))
 
-;; TODO: Use `form' consistently, removing `expr'.
 (defun elisp-fu--unbind (form)
-  "If FORM is a `defvar', `defcustom' or `defface' form, unbind it.
+  "If FORM starts with `defvar', `defcustom' or `defface', unbind it.
 This resets those variables to their default values when we
 evaluate FORM."
   ;; Based on `edebug-eval-defun'.
@@ -315,8 +314,8 @@ evaluate FORM."
 
 ;; TODO: benchmark handling of large strings, large lists
 ;; (e.g. auto-mode-alist), and obarrays.
-(defun elisp-fu--eval (expr start-pos end-pos &optional edebug-p)
-  "Evaluate EXPR, flashing its position in the buffer."
+(defun elisp-fu--eval (form start-pos end-pos &optional edebug-p)
+  "Evaluate FORM, flashing its position in the buffer."
   
   (let* (hist-item result formatted-result)
     (setq hist-item
@@ -329,10 +328,10 @@ evaluate FORM."
     (setq elisp-fu--history
           (-take elisp-fu-history-size elisp-fu--history))
 
-    (elisp-fu--unbind expr)
+    (elisp-fu--unbind form)
     (condition-case e
         (progn
-          (setq result (eval expr lexical-binding))
+          (setq result (eval form lexical-binding))
           (setf (elisp-fu-history-item-result hist-item) result)
           (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos))
       (error
