@@ -55,12 +55,10 @@
   "Face for overlay when evaluating a form produces an error."
   :group 'elisp-fu)
 
-;; TODO: rename to elisp-fu-result
-(cl-defstruct elisp-fu-history-item
+(cl-defstruct elisp-fu-result
   buffer start-pos end-pos source
   error-msg backtrace
-  result formatted-result
-  )
+  value formatted-value)
 
 (defvar elisp-fu-history-size 5)
 
@@ -94,17 +92,16 @@
           (unless (equal (point-min) (point-max))
             (insert "\n\n"))
           
-          (let* ((source (elisp-fu-history-item-source item))
-                 (result (elisp-fu-history-item-result item))
-                 (formatted-result
-                  (elisp-fu-history-item-formatted-result item))
-                 (error-msg (elisp-fu-history-item-error-msg item)))
-            (if formatted-result
+          (let* ((source (elisp-fu-result-source item))
+                 (value (elisp-fu-result-value item))
+                 (formatted-value (elisp-fu-result-formatted-value item))
+                 (error-msg (elisp-fu-result-error-msg item)))
+            (if formatted-value
                 ;; Only apply font-lock if we managed to pretty-print
                 ;; the result. If it was very big and we failed to
                 ;; pretty-print it, font lock will be slow too.
-                (setq formatted-result (elisp-fu--syntax-highlight formatted-result))
-              (setq formatted-result (format "%S" result)))
+                (setq formatted-value (elisp-fu--syntax-highlight formatted-value))
+              (setq formatted-value (format "%S" value)))
             (insert
              (propertize
               (concat "elisp-fu> " source)
@@ -112,7 +109,7 @@
              "\n"
              (if error-msg
                  (propertize error-msg 'face 'font-lock-warning-face)
-               formatted-result))))
+               formatted-value))))
         ;; TODO: preserve previous point position?
         (goto-char (point-max))))))
 
@@ -317,9 +314,9 @@ evaluate FORM."
 (defun elisp-fu--eval (form start-pos end-pos &optional edebug-p)
   "Evaluate FORM, flashing its position in the buffer."
   
-  (let* (hist-item result formatted-result)
+  (let* (hist-item value formatted-value)
     (setq hist-item
-          (make-elisp-fu-history-item
+          (make-elisp-fu-result
            :buffer (current-buffer)
            :start-pos start-pos
            :end-pos end-pos
@@ -331,34 +328,34 @@ evaluate FORM."
     (elisp-fu--unbind form)
     (condition-case e
         (progn
-          (setq result (eval form lexical-binding))
-          (setf (elisp-fu-history-item-result hist-item) result)
+          (setq value (eval form lexical-binding))
+          (setf (elisp-fu-result-value hist-item) value)
           (elisp-fu--flash-region 'elisp-fu-success start-pos end-pos))
       (error
        ;; Flash the form in red, then propagate the signal.
        (elisp-fu--flash-region 'elisp-fu-error start-pos end-pos)
 
-       (setf (elisp-fu-history-item-error-msg hist-item) (cadr e))
+       (setf (elisp-fu-result-error-msg hist-item) (cadr e))
        (elisp-fu--update-results-buffer)
 
        (error (cadr e))))
 
     ;; TODO: use conventional Emacs integer formatting
     ;; TODO: truncate long string
-    (setq formatted-result (s-trim-right (pp-to-string result)))
-    (setf (elisp-fu-history-item-formatted-result hist-item)
-          formatted-result)
+    (setq formatted-value (s-trim-right (pp-to-string value)))
+    (setf (elisp-fu-result-formatted-value hist-item)
+          formatted-value)
     (elisp-fu--update-results-buffer)
 
     ;; TODO: If the form isn't fully on screen (e.g. large
     ;; functions), ensure the overlay is at the bottom of the
     ;; window.
-    (elisp-fu--make-result-overlay (format " => %s" formatted-result) end-pos)
+    (elisp-fu--make-result-overlay (format " => %s" formatted-value) end-pos)
 
     (message
      (if edebug-p
-         (format "%s (edebug enabled)" formatted-result)
-       (format "%s" formatted-result)))))
+         (format "%s (edebug enabled)" formatted-value)
+       (format "%s" formatted-value)))))
 
 (defun elisp-fu-eval-preceding ()
   "Evaluate the form before point, and flash the result.
