@@ -368,6 +368,7 @@ variable to its default value."
   (interactive)
   (apply #'elisp-fu--eval (elisp-fu--preceding-sexp)))
 
+;; TODO: add the ability to run ert tests too.
 (defun elisp-fu-eval-top-level (edebug-p)
   "Evaluate the top-level form containing point, and flash the result.
 
