@@ -341,7 +341,6 @@ evaluate FORM."
        (error (cadr e))))
 
     ;; TODO: use conventional Emacs integer formatting
-    ;; TODO: truncate long string
     (setq formatted-value (s-trim-right (pp-to-string value)))
     (setf (elisp-fu-result-formatted-value hist-item)
           formatted-value)
@@ -350,12 +349,56 @@ evaluate FORM."
     ;; TODO: If the form isn't fully on screen (e.g. large
     ;; functions), ensure the overlay is at the bottom of the
     ;; window.
-    (elisp-fu--make-result-overlay (format " => %s" formatted-value) end-pos)
+    (elisp-fu--make-result-overlay
+     (format
+      " => %s"
+      (elisp-fu--truncate formatted-value (- (window-width) 4)))
+     end-pos)
 
     (message
      (if edebug-p
          (format "%s (edebug enabled)" formatted-value)
-       (format "%s" formatted-value)))))
+       (format "%s" (elisp-fu--truncate formatted-value (frame-width)))))))
+
+(defun elisp-fu--truncate (formatted-value max-len)
+  "Truncate FORMATTED-VALUE so it is shorter than MAX-LEN, adding
+a truncation message if necessary.."
+  (let* ((truncated-msg "... truncated, see buffer *elisp-fu-results*")
+         (truncated nil))
+    (setq max-len (- max-len (length truncated-msg)))
+    ;; If the formatted value contains newlines (e.g. large lists),
+    ;; display as complete many lines as we can.
+    (when (s-contains-p "\n" formatted-value)
+      (let (result)
+        (catch 'done
+          (--each
+              (s-lines formatted-value)
+            (message "it: %S" it)
+            (setq it (s-trim-left it))
+            (let ((longer (if result (concat result " " it) it)))
+              (if (<= (length longer) max-len)
+                  (setq result longer)
+                (setq truncated t)
+                (throw 'done nil)))))
+        (setq formatted-value result)))
+
+    ;; If the formatted value didn't contain newlines, it might still
+    ;; be too long.
+    (when (> (length formatted-value) max-len)
+      (setq formatted-value
+            (format "%s" (substring formatted-value 0 max-len)))
+      (setq truncated t))
+
+    ;; Add the truncated message if needs be, styling it differently
+    ;; from the user's value.
+    (when truncated
+      (setq formatted-value
+            (concat formatted-value
+                    (propertize
+                     truncated-msg
+                     'face 'font-lock-comment-face))))
+
+    formatted-value))
 
 (defun elisp-fu-eval-preceding ()
   "Evaluate the form before point, and flash the result.
