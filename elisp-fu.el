@@ -109,7 +109,7 @@
               'face 'font-lock-comment-face)
              "\n"
              (if error-msg
-                 (propertize error-msg 'face 'font-lock-warning-face)
+                 (propertize (format "%S" error-msg) 'face 'font-lock-warning-face)
                formatted-value))))
         ;; TODO: preserve previous point position?
         (goto-char (point-max))))))
@@ -339,7 +339,7 @@ evaluate FORM."
        (setf (elisp-fu-result-error-msg hist-item) (cadr e))
        (elisp-fu--update-results-buffer)
 
-       (error (cadr e))))
+       (signal (car e) (cdr e))))
 
     ;; TODO: use conventional Emacs integer formatting
     (setq formatted-value (s-trim-right (pp-to-string value)))
