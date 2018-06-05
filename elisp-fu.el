@@ -102,6 +102,7 @@
                 ;; pretty-print it, font lock will be slow too.
                 (setq formatted-value (elisp-fu--syntax-highlight formatted-value))
               (setq formatted-value (format "%S" value)))
+            ;; TODO: write the type too.
             (insert
              (propertize
               (concat "elisp-fu> " source)
