@@ -294,6 +294,8 @@ This resets those variables to their default values when we
 evaluate FORM."
   ;; Based on `edebug-eval-defun'.
   (cond
+   ;; TODO: unbind defvar-local too, and patch Emacs upstream
+   ;; likewise.
    ((and (eq (car-safe form) 'defvar)
          (cdr-safe (cdr-safe form)))
     ;; Unbind variable.
