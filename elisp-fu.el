@@ -361,6 +361,8 @@ evaluate FORM."
          (format "%s (edebug enabled)" formatted-value)
        (format "%s" (elisp-fu--truncate formatted-value (frame-width)))))))
 
+;; TODO: if a value fits within max-len but only without the
+;; truncation message, we should still print it.
 (defun elisp-fu--truncate (formatted-value max-len)
   "Truncate FORMATTED-VALUE so it is shorter than MAX-LEN, adding
 a truncation message if necessary.."
