@@ -405,6 +405,7 @@ a truncation message if necessary.."
 
     formatted-value))
 
+;; TODO: allow users to eval an active region.
 (defun elisp-fu-eval-preceding ()
   "Evaluate the form before point, and flash the result.
 
