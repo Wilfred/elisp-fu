@@ -26,6 +26,8 @@
 
 ;;; Code:
 
+;; TODO: a convenient way of evalling let forms half-way through.
+
 (require 'edebug)
 (require 'dash)
 (require 's)
