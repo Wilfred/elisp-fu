@@ -314,11 +314,27 @@ evaluate FORM."
     (put (nth 1 form) 'face-defface-spec nil)
     (put (nth 1 form) 'face-documentation (nth 3 form)))))
 
+(defvar elisp-fu--last-value nil)
+
+(defun elisp-fu--replace-with-val ()
+  "Replace the form before point with the last evaluated value."
+  (interactive)
+  (let ((end-pos (point))
+        (start-pos (scan-sexps (point) -1)))
+    (delete-region start-pos end-pos)
+    (insert (s-trim (pp-to-string elisp-fu--last-value)))))
+
+;; TODO: Offer a shortcut for jumping to the results buffer.
+(defvar elisp-fu--active-keymap
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap (kbd "r") #'elisp-fu--replace-with-val)
+    keymap))
+
 ;; TODO: benchmark handling of large strings, large lists
 ;; (e.g. auto-mode-alist), and obarrays.
 (defun elisp-fu--eval (form start-pos end-pos &optional edebug-p)
   "Evaluate FORM, flashing its position in the buffer."
-  
+
   (let* (hist-item value formatted-value)
     (setq hist-item
           (make-elisp-fu-result
@@ -345,6 +361,9 @@ evaluate FORM."
 
        (signal (car e) (cdr e))))
 
+    ;; If we reached this point, we didn't get an error during evaluation.
+    (setq elisp-fu--last-value value)
+
     ;; TODO: use conventional Emacs integer formatting
     (setq formatted-value (s-trim-right (pp-to-string value)))
     (setf (elisp-fu-result-formatted-value hist-item)
@@ -360,10 +379,16 @@ evaluate FORM."
       (elisp-fu--truncate formatted-value (- (window-width) 4)))
      end-pos)
 
-    (message
-     (if edebug-p
-         (format "%s (edebug enabled)" formatted-value)
-       (format "%s" (elisp-fu--truncate formatted-value (frame-width)))))))
+    (let ((msg (if edebug-p
+                   (format "%s (edebug enabled)" formatted-value)
+                 (format "%s" (elisp-fu--truncate formatted-value (frame-width))))))
+      (if (null value)
+          (message value)
+        ;; If the value isn't nil, offer replacing the current sexp
+        ;; with its result.
+        (message
+         (format "%s\nActions available: [r]eplace" msg))
+        (set-transient-map elisp-fu--active-keymap)))))
 
 ;; TODO: if a value fits within max-len but only without the
 ;; truncation message, we should still print it.
