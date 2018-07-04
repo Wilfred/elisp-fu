@@ -2,6 +2,32 @@
 
 A better way of interactively evaluating elisp.
 
+## Features
+
+### Evaluate forms
+
+Containing form or previous form.
+
+### Flash the evaluated region
+
+Green for success, orange on failure.
+
+### Show results inline and in minibuffer
+
+See results in context.
+
+### See previous values evaluated
+
+Separate results buffer.
+
+### Replace forms with their result
+
+Handy for quickly calculating things.
+
+### Resets variables to default
+
+Re-evaluating a `defvar` sets its new value.
+
 ## Inspirations
 
 * [eval-sexp-fu](https://github.com/hchbaw/eval-sexp-fu.el) flashes
@@ -13,3 +39,5 @@ A better way of interactively evaluating elisp.
 * [Eval-result-overlays in Emacs-lisp](http://endlessparentheses.com/eval-result-overlays-in-emacs-lisp.html) shows
   how to apply this idea to elisp,
   and [eros](https://github.com/xiongtx/eros) is a nice packaging of this.
+* [Indium](https://github.com/NicolasPetton/Indium) displays extra
+  tools in the minibuffer when evaluating JS.
