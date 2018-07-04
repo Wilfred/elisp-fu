@@ -316,6 +316,7 @@ evaluate FORM."
 
 (defvar elisp-fu--last-value nil)
 
+;; TODO: doesn't work when evalling the containing form.
 (defun elisp-fu--replace-with-val ()
   "Replace the form before point with the last evaluated value."
   (interactive)
@@ -324,11 +325,46 @@ evaluate FORM."
     (delete-region start-pos end-pos)
     (insert (s-trim (pp-to-string elisp-fu--last-value)))))
 
+(defun elisp-fu--execute-ert-test-sym ()
+  "Execute the last result as an ERT test."
+  (interactive)
+  (ert elisp-fu--last-value))
+
 ;; TODO: Offer a shortcut for jumping to the results buffer.
 (defvar elisp-fu--active-keymap
   (let ((keymap (make-sparse-keymap)))
     (define-key keymap (kbd "r") #'elisp-fu--replace-with-val)
+    (define-key keymap (kbd "x") #'elisp-fu--execute-ert-test-sym)
     keymap))
+
+(defun elisp-fu--actions-str (form value)
+  "Return a string describing VALUE and what we can do with it."
+  ;; TODO: call this Insert, so we free up R.
+  (let ((available-actions (list "[r]eplace"))
+        actions)
+    ;; Show which commands we can execute on this type.
+    (when (eq (car form) 'ert-deftest)
+      (setq available-actions (-snoc available-actions "e[x]ecute")))
+
+    ;; Prettify text to make the key more obvious.
+    (setq actions (s-join " " available-actions))
+    (setq actions
+          (replace-regexp-in-string
+           (rx "[" (group (+? anything)) "]")
+           (lambda (src)
+             (concat "["
+                     (propertize
+                      (match-string 1 src)
+                      ;; TODO: find a better face, see what Indium uses.
+                      'face 'font-lock-keyword-face)
+                     "]"))
+           actions))
+    
+    (format "%s %s\t%s %s"
+            (propertize "Type:" 'face 'bold)
+            (type-of value)
+            (propertize "Actions:" 'face 'bold)
+            actions)))
 
 ;; TODO: benchmark handling of large strings, large lists
 ;; (e.g. auto-mode-alist), and obarrays.
@@ -387,11 +423,9 @@ evaluate FORM."
         ;; If the value isn't nil, offer replacing the current sexp
         ;; with its result.
         (message
-         (format "%s\n%s %s %s [r]eplace"
+         (format "%s\n%s"
                  msg
-                 (propertize "Type:" 'face 'bold)
-                 (type-of value)
-                 (propertize "Actions:" 'face 'bold)))
+                 (elisp-fu--actions-str form value)))
         (set-transient-map elisp-fu--active-keymap)))))
 
 (defun elisp-fu--truncate (formatted-value max-len)

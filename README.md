@@ -32,6 +32,11 @@ Handy for quickly calculating things.
 
 Re-evaluating a `defvar` sets its new value.
 
+### Conveniently run tests
+
+If you've just evalled an `ert-deftest` form, you can immediately run
+the test afterwards.
+
 ## Inspirations
 
 * [eval-sexp-fu](https://github.com/hchbaw/eval-sexp-fu.el) flashes
