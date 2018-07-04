@@ -387,38 +387,25 @@ evaluate FORM."
         ;; If the value isn't nil, offer replacing the current sexp
         ;; with its result.
         (message
-         (format "%s\nActions available: [r]eplace" msg))
+         (format "%s\n%s %s %s [r]eplace"
+                 msg
+                 (propertize "Type:" 'face 'bold)
+                 (type-of value)
+                 (propertize "Actions:" 'face 'bold)))
         (set-transient-map elisp-fu--active-keymap)))))
 
-;; TODO: if a value fits within max-len but only without the
-;; truncation message, we should still print it.
 (defun elisp-fu--truncate (formatted-value max-len)
   "Truncate FORMATTED-VALUE so it is shorter than MAX-LEN, adding
-a truncation message if necessary.."
-  (let* ((truncated-msg "... truncated, see buffer *elisp-fu-results*")
+a truncation message if necessary."
+  (let* ((truncated-msg "...")
+         (max-truncated-len (- max-len (length truncated-msg)))
          (truncated nil))
-    (setq max-len (- max-len (length truncated-msg)))
-    ;; If the formatted value contains newlines (e.g. large lists),
-    ;; display as complete many lines as we can.
-    (when (s-contains-p "\n" formatted-value)
-      (let (result)
-        (catch 'done
-          (--each
-              (s-lines formatted-value)
-            (message "it: %S" it)
-            (setq it (s-trim-left it))
-            (let ((longer (if result (concat result " " it) it)))
-              (if (<= (length longer) max-len)
-                  (setq result longer)
-                (setq truncated t)
-                (throw 'done nil)))))
-        (setq formatted-value result)))
+    ;; Remove newlines inserted by the pretty-printer.
+    (setq formatted-value (s-replace "\n" " " formatted-value))
 
-    ;; If the formatted value didn't contain newlines, it might still
-    ;; be too long.
     (when (> (length formatted-value) max-len)
       (setq formatted-value
-            (format "%s" (substring formatted-value 0 max-len)))
+            (format "%s" (substring formatted-value 0 max-truncated-len)))
       (setq truncated t))
 
     ;; Add the truncated message if needs be, styling it differently

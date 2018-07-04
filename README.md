@@ -16,6 +16,10 @@ Green for success, orange on failure.
 
 See results in context.
 
+### Show the type of results
+
+Distinguish strings and symbols.
+
 ### See previous values evaluated
 
 Separate results buffer.
